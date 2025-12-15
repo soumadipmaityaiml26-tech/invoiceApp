@@ -10,9 +10,11 @@ import type { IAuthResponse } from "@/types/authType";
 
 import { toast } from "sonner";
 import { CheckCircle, XCircle } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function Login() {
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -111,16 +113,31 @@ export default function Login() {
             </div>
 
             {/* Password Field */}
-            <div>
+            <div className="space-y-1">
               <label className="text-sm font-medium">Password</label>
-              <Input
-                type="password"
-                placeholder="Enter your password"
-                className="mt-1"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="pr-10"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Login Button */}
