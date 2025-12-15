@@ -25,14 +25,15 @@ export default function Sidebar() {
       >
         Add Invoices
       </Button>
-
-      <Button
-        variant="ghost"
-        className="w-full justify-start text-gray-300"
-        onClick={() => setPage("invoices")}
-      >
-        Manage Invoices
-      </Button>
+      {role === "admin" && (
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-gray-300"
+          onClick={() => setPage("invoices")}
+        >
+          Manage Invoices
+        </Button>
+      )}
       {role === "admin" && (
         <Button
           variant="ghost"

@@ -43,14 +43,15 @@ export default function MobileSidebar() {
           >
             Add Invoices
           </Button>
-
-          <Button
-            variant="ghost"
-            className="w-full justify-start"
-            onClick={() => handleSelect("invoices")}
-          >
-            Manage Invoices
-          </Button>
+          {role === "admin" && (
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={() => handleSelect("invoices")}
+            >
+              Manage Invoices
+            </Button>
+          )}
           {role === "admin" && (
             <Button
               variant="ghost"
