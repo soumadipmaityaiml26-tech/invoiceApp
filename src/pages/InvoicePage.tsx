@@ -1,7 +1,5 @@
 import React from "react";
 import type { INVOICE } from "@/types/invoiceType";
-import { generateInvoicePDF } from "@/api/invoice";
-import { downloadBlob } from "@/utils/DownloadBlog";
 import { companyLogos } from "@/assets/companyLogos";
 /* ===============================
    Utils
@@ -15,6 +13,13 @@ const formatCurrency = (amount: number): string =>
 
 const formatDate = (date: string): string =>
   new Date(date).toLocaleDateString("en-IN");
+
+const formatTime = (date: string): string =>
+  new Date(date).toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
 
 /* ===============================
    Props
@@ -53,26 +58,26 @@ const InvoicePage: React.FC<InvoiceProps> = ({ invoice }) => {
     window.print();
   };
 
-  const handleWhatsApp = async (invoice: INVOICE) => {
-    try {
-      // 1️⃣ Generate PDF from backend
-      const pdfBlob = await generateInvoicePDF(invoice);
+  // const handleWhatsApp = async (invoice: INVOICE) => {
+  //   try {
+  //     // 1️⃣ Generate PDF from backend
+  //     const pdfBlob = await generateInvoicePDF(invoice);
 
-      // 2️⃣ Download PDF locally
-      downloadBlob(pdfBlob, `Invoice_${invoice._id}.pdf`);
+  //     // 2️⃣ Download PDF locally
+  //     downloadBlob(pdfBlob, `Invoice_${invoice._id}.pdf`);
 
-      // 3️⃣ Open WhatsApp with message
-      window.open(
-        `https://wa.me/?text=${encodeURIComponent(
-          "📄 Please find the invoice attached."
-        )}`,
-        "_blank"
-      );
-    } catch (error) {
-      console.error("Invoice PDF generation failed", error);
-      alert("Failed to generate invoice PDF");
-    }
-  };
+  //     // 3️⃣ Open WhatsApp with message
+  //     window.open(
+  //       `https://wa.me/?text=${encodeURIComponent(
+  //         "📄 Please find the invoice attached."
+  //       )}`,
+  //       "_blank"
+  //     );
+  //   } catch (error) {
+  //     console.error("Invoice PDF generation failed", error);
+  //     alert("Failed to generate invoice PDF");
+  //   }
+  // };
 
   return (
     <>
@@ -135,6 +140,7 @@ const InvoicePage: React.FC<InvoiceProps> = ({ invoice }) => {
               <h2 style={styles.heading}>TAX INVOICE</h2>
               <div>Invoice No: {_id}</div>
               <div>Date: {formatDate(createdAt)}</div>
+              <div>Time: {formatTime(createdAt)}</div>
             </div>
           </div>
 
@@ -156,8 +162,8 @@ const InvoicePage: React.FC<InvoiceProps> = ({ invoice }) => {
             <thead>
               <tr>
                 <th style={styles.th}>Description</th>
-                <th style={styles.th}>Project</th>
-                <th style={styles.th}>Code</th>
+                <th style={styles.th}>Floor/Project Name</th>
+                <th style={styles.th}>HSN Code</th>
                 <th style={{ ...styles.th, textAlign: "right" }}>Area</th>
                 <th style={{ ...styles.th, textAlign: "right" }}>Rate (₹)</th>
                 <th style={{ ...styles.th, textAlign: "right" }}>Amount (₹)</th>
@@ -204,14 +210,14 @@ const InvoicePage: React.FC<InvoiceProps> = ({ invoice }) => {
             <Row label={`GST ${gst.percentage}%`} value={gst.amount} />
 
             <div style={styles.total}>
-              <span>TOTAL</span>
+              <span>GRAND TOTAL</span>
               <span>{formatCurrency(totalAmount)}</span>
             </div>
 
-            {advance > 0 && <Row label="Advance" value={advance} />}
+            {advance > 0 && <Row label="Advance Amount" value={advance} />}
 
             <div style={styles.boldRow}>
-              <span>Balance</span>
+              <span>TOTAL DUE AMOUNT</span>
               <span>{formatCurrency(remainingAmount)}</span>
             </div>
           </div>
@@ -224,22 +230,29 @@ const InvoicePage: React.FC<InvoiceProps> = ({ invoice }) => {
           {/* FOOTER */}
           <div style={styles.footer}>
             <div>
-              <strong>Bank</strong>
+              <strong>Bank Details:</strong>
               <br />
-              HDFC Bank
+              Bank: Induslnd Bank
               <br />
-              A/C: 50200012345678
+              Branch: Gariahat
               <br />
-              IFSC: HDFC0001234
+              A/C: 259831918066
+              <br />
+              IFSC: INDB0000029
+              <br />
+              Account Type: Current
             </div>
 
             <div>
-              <strong>Terms</strong>
+              <strong>Terms & Condition</strong>
               <ul style={styles.terms}>
-                <li>Payment as agreed</li>
-                <li>Cheque subject to realization</li>
-                <li>Kolkata jurisdiction</li>
-                <li>GST applicable</li>
+                <li>1. All disputes subjected to Kolkata jurisdiction only.</li>
+                <li>2. Cheques to be drawn in favour of "{company.name}".</li>
+                <li>
+                  3. This Invoice is valid only with stamp and Accountant
+                  signature in case of check payment.
+                </li>
+                <li>4. GST applicable</li>
               </ul>
             </div>
           </div>
@@ -254,13 +267,6 @@ const InvoicePage: React.FC<InvoiceProps> = ({ invoice }) => {
 
         {/* ================= ACTION BUTTONS ================= */}
         <div className="action-buttons" style={styles.actions}>
-          <button
-            onClick={() => handleWhatsApp(invoice)}
-            style={styles.whatsappBtn}
-          >
-            Send to WhatsApp
-          </button>
-
           <button onClick={handlePrint} style={styles.printBtn}>
             Print / Download
           </button>

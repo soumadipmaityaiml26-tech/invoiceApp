@@ -78,3 +78,18 @@ export const generateInvoicePDF = async (invoice: INVOICE): Promise<Blob> => {
 
   return res.data;
 };
+
+export const deleteInvoice = async (invoiceId: string) => {
+  const token = localStorage.getItem("authToken");
+
+  const res = await api.delete<{ success: boolean; message: string }>(
+    `/invoices/${invoiceId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  return res.data;
+};

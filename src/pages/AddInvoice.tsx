@@ -20,6 +20,18 @@ import type {
 } from "@/types/invoiceType";
 import { createInvoice } from "@/api/invoice";
 import { toast } from "sonner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+/* ================= UTILS ================= */
+const getDate = (iso: string) => iso.split("T")[0];
+const getTime = (iso: string) => iso.split("T")[1].slice(0, 5);
 
 /* ================= TYPES ================= */
 type LineItem = {
@@ -682,24 +694,59 @@ export default function AddInvoice() {
     }
 
     return (
-      <div className="flex gap-3 pt-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1 flex items-center gap-2"
-          onClick={() =>
-            navigate(`/invoice/${newInvoice._id}`, {
-              state: { invoice: newInvoice },
-            })
-          }
-        >
-          <Download className="h-4 w-4" />
-          Download
-        </Button>
-        <Button size="sm" className="flex-1" onClick={() => handleNext()}>
-          Next
-        </Button>
-      </div>
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Invoice</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Total</TableHead>
+              <TableHead>Advance</TableHead>
+              <TableHead>Remaining</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Time</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            <TableRow>
+              <TableCell>{newInvoice._id}</TableCell>
+              <TableCell>{newInvoice.customer.name}</TableCell>
+              <TableCell>{newInvoice.customer.phone}</TableCell>
+              <TableCell>₹{newInvoice.totalAmount}</TableCell>
+              <TableCell>₹{newInvoice.advance}</TableCell>
+              <TableCell className="text-red-600 font-semibold">
+                ₹{newInvoice.remainingAmount}
+              </TableCell>
+              <TableCell>{getDate(newInvoice.createdAt)}</TableCell>
+              <TableCell>{getTime(newInvoice.createdAt)}</TableCell>
+              <TableCell className="flex justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    navigate(`/invoice/${newInvoice._id}`, {
+                      state: { invoice: newInvoice },
+                    })
+                  }
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => handleNext()}
+                >
+                  Next
+                </Button>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </>
     );
   }
 }

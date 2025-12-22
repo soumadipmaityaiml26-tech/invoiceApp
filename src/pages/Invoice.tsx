@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Download, Pencil, Search } from "lucide-react";
+import { Download, Pencil, Search, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,72 +18,59 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import type { INVOICE, IGetAllInvoiceResponse } from "@/types/invoiceType";
-import { getAllInvoices, updateInvoice } from "@/api/invoice";
+import { getAllInvoices, updateInvoice, deleteInvoice } from "@/api/invoice";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 /* ================= UTILS ================= */
-function getDateFromISOString(isoString: string) {
-  return new Date(isoString).toISOString().split("T")[0];
-}
-
-function getTimeHHMMFromISOString(isoString: string) {
-  return new Date(isoString).toISOString().split("T")[1].slice(0, 5);
-}
+const getDate = (iso: string) => iso.split("T")[0];
+const getTime = (iso: string) => iso.split("T")[1].slice(0, 5);
 
 /* ================= COMPONENT ================= */
 export default function Invoices() {
   const navigate = useNavigate();
+
+  const [search, setSearch] = useState("");
+  const [invoices, setInvoices] = useState<INVOICE[]>([]);
+
+  /* ===== Edit Payment ===== */
+  const [open, setOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<INVOICE | null>(null);
+  const [payment, setPayment] = useState<number | null>(null);
   const [paymentMode, setPaymentMode] = useState<
     "Bank Transfer" | "Cheque" | "UPI" | "Cash" | "Demand Draft" | "Others"
   >("Bank Transfer");
-
   const [chequeNumber, setChequeNumber] = useState("");
   const [bankName, setBankName] = useState("");
-
-  const [search, setSearch] = useState("");
-  const [open, setOpen] = useState(false);
-  const [payment, setPayment] = useState<number | null>(null);
-
-  const [selectedInvoice, setSelectedInvoice] = useState<INVOICE | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const [invoices, setInvoices] = useState<INVOICE[]>([]);
+  /* ===== Delete ===== */
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
 
-  const getInvoices = async () => {
+  /* ================= FETCH ================= */
+  const fetchInvoices = async () => {
     const data: IGetAllInvoiceResponse = await getAllInvoices();
     setInvoices(data.invoices);
   };
 
-  const updateInvoicePayment = async (
-    id: string,
-    customerName: string,
-    amount: number,
-    paymentMode:
-      | "Bank Transfer"
-      | "Cheque"
-      | "UPI"
-      | "Cash"
-      | "Demand Draft"
-      | "Others",
-    chequeNumber?: string,
-    bankName?: string
-  ) => {
-    await updateInvoice(id, {
-      amount,
-      customerName,
-      paymentMode,
-      chequeNumber,
-      bankName,
-    });
-  };
-
   useEffect(() => {
-    getInvoices();
+    fetchInvoices();
   }, []);
 
+  /* ================= FILTER ================= */
   const filteredInvoices = invoices.filter(
     (inv) =>
       inv._id.toLowerCase().includes(search.toLowerCase()) ||
@@ -93,6 +80,7 @@ export default function Invoices() {
   );
 
   /* ================= HANDLERS ================= */
+
   const handleEditClick = (invoice: INVOICE) => {
     setSelectedInvoice(invoice);
     setPayment(null);
@@ -103,67 +91,70 @@ export default function Invoices() {
   };
 
   const handleUpdate = async () => {
-    if (!selectedInvoice) return;
+    if (!selectedInvoice || payment === null) return;
 
     try {
       setLoading(true);
-      if (
-        payment != null &&
-        (payment > selectedInvoice.remainingAmount || payment <= 0)
-      ) {
+
+      if (payment <= 0 || payment > selectedInvoice.remainingAmount) {
         throw new Error("Invalid payment amount");
       }
 
-      await updateInvoicePayment(
-        selectedInvoice._id,
-        selectedInvoice.customer.name,
-        payment ?? 0,
+      await updateInvoice(selectedInvoice._id, {
+        amount: payment,
+        customerName: selectedInvoice.customer.name,
         paymentMode,
-        paymentMode === "Cheque" ? chequeNumber : undefined,
-        paymentMode === "Cheque" ? bankName : undefined
-      );
+        chequeNumber: paymentMode === "Cheque" ? chequeNumber : undefined,
+        bankName: paymentMode === "Cheque" ? bankName : undefined,
+      });
+
+      toast.success("Payment added successfully");
       setOpen(false);
-      setSelectedInvoice(null);
-      setPayment(null);
-
-      // refresh invoices
-      getInvoices();
+      fetchInvoices();
     } catch (err: any) {
-      const errorMessage =
-        err?.response?.data?.message || // Axios backend error
-        err?.message || // JS / network error
-        "Payment update failed";
-
-      toast.error(errorMessage);
+      toast.error(err?.message || "Payment update failed");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!invoiceToDelete) return;
+
+    try {
+      await deleteInvoice(invoiceToDelete);
+      toast.success("Invoice deleted successfully");
+
+      setInvoices((prev) => prev.filter((inv) => inv._id !== invoiceToDelete));
+    } catch (err: any) {
+      toast.error(err?.message || "Delete failed");
+    } finally {
+      setDeleteOpen(false);
+      setInvoiceToDelete(null);
+    }
+  };
+
+  /* ================= UI ================= */
   return (
     <div className="space-y-6">
-      {/* ================= SEARCH ================= */}
-      <div className="sticky top-0 z-20 bg-gray-100 pt-2 pb-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Input
-            placeholder="Search invoice / customer / phone"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="sm:max-w-sm"
-          />
-          <Button className="flex gap-2">
-            <Search className="h-4 w-4" />
-            Search
-          </Button>
-        </div>
+      {/* SEARCH */}
+      <div className="flex gap-3">
+        <Input
+          placeholder="Search invoice / customer / phone"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <Button>
+          <Search className="h-4 w-4" />
+        </Button>
       </div>
 
-      {/* ================= DESKTOP TABLE ================= */}
-      <div className="hidden md:block rounded-2xl border bg-white p-6">
+      {/* ================= DESKTOP VIEW ================= */}
+      <div className="hidden md:block rounded-xl border bg-white p-4">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Invoice ID</TableHead>
+              <TableHead>Invoice</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Total</TableHead>
@@ -178,19 +169,18 @@ export default function Invoices() {
           <TableBody>
             {filteredInvoices.map((inv) => (
               <TableRow key={inv._id}>
-                <TableCell className="font-medium">{inv._id}</TableCell>
+                <TableCell>{inv._id}</TableCell>
                 <TableCell>{inv.customer.name}</TableCell>
                 <TableCell>{inv.customer.phone}</TableCell>
                 <TableCell>₹{inv.totalAmount}</TableCell>
                 <TableCell>₹{inv.advance}</TableCell>
-                <TableCell className="font-semibold text-red-600">
+                <TableCell className="text-red-600 font-semibold">
                   ₹{inv.remainingAmount}
                 </TableCell>
-                <TableCell>{getDateFromISOString(inv.createdAt)}</TableCell>
-                <TableCell>{getTimeHHMMFromISOString(inv.createdAt)}</TableCell>
-                <TableCell className="flex justify-end gap-3">
+                <TableCell>{getDate(inv.createdAt)}</TableCell>
+                <TableCell>{getTime(inv.createdAt)}</TableCell>
+                <TableCell className="flex justify-end gap-2">
                   <Button
-                    type="button"
                     size="sm"
                     variant="outline"
                     onClick={() =>
@@ -201,8 +191,20 @@ export default function Invoices() {
                   >
                     <Download className="h-4 w-4" />
                   </Button>
+
                   <Button size="sm" onClick={() => handleEditClick(inv)}>
                     <Pencil className="h-4 w-4" />
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => {
+                      setInvoiceToDelete(inv._id);
+                      setDeleteOpen(true);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </TableCell>
               </TableRow>
@@ -212,7 +214,7 @@ export default function Invoices() {
       </div>
 
       {/* ================= MOBILE VIEW ================= */}
-      <div className="space-y-5 md:hidden">
+      <div className="space-y-4 md:hidden">
         {filteredInvoices.map((inv) => (
           <Card key={inv._id}>
             <CardContent className="p-5 space-y-4">
@@ -238,8 +240,7 @@ export default function Invoices() {
 
                 <p className="text-muted-foreground">Date</p>
                 <p>
-                  {getDateFromISOString(inv.createdAt)}{" "}
-                  {getTimeHHMMFromISOString(inv.createdAt)}
+                  {getDate(inv.createdAt)} {getTime(inv.createdAt)}
                 </p>
               </div>
 
@@ -257,13 +258,27 @@ export default function Invoices() {
                   <Download className="h-4 w-4" />
                   Download
                 </Button>
+
                 <Button
                   size="sm"
-                  className="flex-1"
+                  className="flex-1 flex items-center gap-2"
                   onClick={() => handleEditClick(inv)}
                 >
                   <Pencil className="h-4 w-4" />
                   Edit
+                </Button>
+
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="flex-1 flex items-center gap-2"
+                  onClick={() => {
+                    setInvoiceToDelete(inv._id);
+                    setDeleteOpen(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
                 </Button>
               </div>
             </CardContent>
@@ -271,15 +286,38 @@ export default function Invoices() {
         ))}
       </div>
 
-      {/* ================= EDIT MODAL ================= */}
+      {/* ================= DELETE CONFIRMATION ================= */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Invoice?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The invoice and all related payments
+              will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={handleDeleteConfirm}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ================= EDIT PAYMENT MODAL ================= */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Add Payment ({selectedInvoice?._id})</DialogTitle>
+            <DialogTitle>Add Payment</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-3">
-            <Label>Payment Amount</Label>
+            <Label>Amount</Label>
             <Input
               type="number"
               value={payment ?? ""}
@@ -288,26 +326,15 @@ export default function Invoices() {
                   e.target.value === "" ? null : Number(e.target.value)
                 )
               }
-              placeholder="Enter amount"
             />
           </div>
-          {/* PAYMENT MODE */}
+
           <div className="space-y-2">
             <Label>Payment Mode</Label>
             <select
-              className="w-full h-10 rounded-md border px-3 text-sm"
+              className="w-full border rounded-md h-10 px-3"
               value={paymentMode}
-              onChange={(e) =>
-                setPaymentMode(
-                  e.target.value as
-                    | "Bank Transfer"
-                    | "Cheque"
-                    | "UPI"
-                    | "Cash"
-                    | "Demand Draft"
-                    | "Others"
-                )
-              }
+              onChange={(e) => setPaymentMode(e.target.value as any)}
             >
               <option>Bank Transfer</option>
               <option>Cheque</option>
@@ -317,41 +344,28 @@ export default function Invoices() {
               <option>Others</option>
             </select>
           </div>
-          {paymentMode === "Cheque" && (
-            <div className="space-y-3">
-              <div>
-                <Label>Cheque Number</Label>
-                <Input
-                  value={chequeNumber}
-                  onChange={(e) => setChequeNumber(e.target.value)}
-                  placeholder="Enter cheque number"
-                />
-              </div>
 
-              <div>
-                <Label>Bank Name</Label>
-                <Input
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  placeholder="Enter bank name"
-                />
-              </div>
-            </div>
+          {paymentMode === "Cheque" && (
+            <>
+              <Input
+                placeholder="Cheque Number"
+                value={chequeNumber}
+                onChange={(e) => setChequeNumber(e.target.value)}
+              />
+              <Input
+                placeholder="Bank Name"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+              />
+            </>
           )}
 
-          <DialogFooter className="pt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setOpen(false);
-                setSelectedInvoice(null);
-                setPayment(null);
-              }}
-            >
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleUpdate} disabled={loading}>
-              {loading ? "Adding..." : "Add"}
+              {loading ? "Saving..." : "Add"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,7 +1,15 @@
-import { getAnalytics } from "@/api/analytics";
+import { useEffect, useMemo, useState } from "react";
+import { getAnalytics, getSummary } from "@/api/analytics";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { IAnalyticsResponse } from "@/types/analyticsType";
+
+import type {
+  IAnalyticsResponse,
+  IChart,
+  IGetSummaryResponse,
+} from "@/types/analyticsType";
+
 import {
   LineChart,
   Line,
@@ -11,113 +19,95 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { useState, useEffect } from "react";
+
+/* ================= HELPERS ================= */
+
+const formatYAxis = (value: number) => {
+  if (value >= 1_00_00_000) return `${(value / 1_00_00_000).toFixed(1)} Cr`;
+  if (value >= 1_00_000) return `${(value / 1_00_000).toFixed(1)} L`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)} K`;
+  return value.toString();
+};
 
 export default function Analytics() {
   const [totalInvoices, setTotalInvoices] = useState(0);
   const [totalDue, setTotalDue] = useState(0);
   const [totalPaid, setTotalPaid] = useState(0);
+  const [paymentsData, setPaymentsData] = useState<IChart[]>([]);
+
+  /* ================= FETCH DATA ================= */
 
   useEffect(() => {
-    const fetchdata = async () => {
-      const data: IAnalyticsResponse = await getAnalytics();
-      setTotalInvoices(Number(data.analytics.totalInvoices));
-      setTotalDue(Number(data.analytics.totalDue));
-      setTotalPaid(Number(data.analytics.totalPaid));
+    const fetchData = async () => {
+      const [analytics, summary]: [IAnalyticsResponse, IGetSummaryResponse] =
+        await Promise.all([getAnalytics(), getSummary()]);
+
+      setTotalInvoices(Number(analytics.analytics.totalInvoices));
+      setTotalDue(Number(analytics.analytics.totalDue));
+      setTotalPaid(Number(analytics.analytics.totalPaid));
+      setPaymentsData(summary.analytics.last30DaysPayments);
     };
-    fetchdata();
+
+    fetchData();
   }, []);
 
-  const paymentsData = [
-    { date: "Aug 01", amount: 12000 },
-    { date: "Aug 05", amount: 24000 },
-    { date: "Aug 10", amount: 19000 },
-    { date: "Aug 15", amount: 18000 },
-    { date: "Aug 20", amount: 27000 },
-    { date: "Aug 25", amount: 30000 },
-    { date: "Aug 30", amount: 36000 },
-  ];
+  /* ================= CHART DATA ================= */
+
+  const chartData = useMemo(
+    () =>
+      paymentsData.map((item) => ({
+        date: `${item.day} ${item.month}`, // "14 Dec"
+        amount: Number(item.price),
+      })),
+    [paymentsData]
+  );
+
+  const maxAmount = Math.max(...chartData.map((d) => d.amount), 0);
 
   return (
     <div className="space-y-6">
-      {/* ================= DESKTOP VIEW ================= */}
+      {/* ================= DESKTOP STATS ================= */}
       <div className="hidden md:grid grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Invoices</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{totalInvoices}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Amount Due</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-red-600">
-              ₹{totalDue.toLocaleString("en-IN")}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Paid Amount</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-green-600">
-              ₹{totalPaid.toLocaleString("en-IN")}
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard title="Total Invoices" value={totalInvoices} />
+        <StatCard
+          title="Total Amount Due"
+          value={`₹${totalDue.toLocaleString("en-IN")}`}
+          color="text-red-600"
+        />
+        <StatCard
+          title="Total Paid Amount"
+          value={`₹${totalPaid.toLocaleString("en-IN")}`}
+          color="text-green-600"
+        />
       </div>
 
-      {/* ================= MOBILE VIEW ================= */}
+      {/* ================= MOBILE STATS ================= */}
       <div className="md:hidden">
-        <Tabs defaultValue="invoices" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="invoices">
+          <TabsList className="grid grid-cols-3">
             <TabsTrigger value="invoices">Invoices</TabsTrigger>
             <TabsTrigger value="due">Due</TabsTrigger>
             <TabsTrigger value="paid">Paid</TabsTrigger>
           </TabsList>
 
           <TabsContent value="invoices">
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Invoices</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{totalInvoices}</p>
-              </CardContent>
-            </Card>
+            <StatCard title="Total Invoices" value={totalInvoices} />
           </TabsContent>
 
           <TabsContent value="due">
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Amount Due</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-red-600">
-                  ₹{totalDue.toLocaleString("en-IN")}
-                </p>
-              </CardContent>
-            </Card>
+            <StatCard
+              title="Total Amount Due"
+              value={`₹${totalDue.toLocaleString("en-IN")}`}
+              color="text-red-600"
+            />
           </TabsContent>
 
           <TabsContent value="paid">
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Paid Amount</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-green-600">
-                  ₹{totalPaid.toLocaleString("en-IN")}
-                </p>
-              </CardContent>
-            </Card>
+            <StatCard
+              title="Total Paid Amount"
+              value={`₹${totalPaid.toLocaleString("en-IN")}`}
+              color="text-green-600"
+            />
           </TabsContent>
         </Tabs>
       </div>
@@ -128,15 +118,27 @@ export default function Analytics() {
           <CardTitle>Payments Received (Last 30 Days)</CardTitle>
         </CardHeader>
 
-        <CardContent className="h-[300px] sm:h-[360px]">
+        <CardContent className="h-[320px] sm:h-[380px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={paymentsData}>
+            <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
 
               <XAxis dataKey="date" tick={{ fontSize: 12 }} tickMargin={8} />
 
-              <YAxis />
-              <Tooltip />
+              <YAxis
+                width={90}
+                tickFormatter={formatYAxis}
+                tickCount={6}
+                domain={[0, Math.ceil(maxAmount * 1.1)]}
+                allowDecimals={false}
+              />
+
+              <Tooltip
+                formatter={(value: number | undefined) => [
+                  `₹${(value || 0).toLocaleString("en-IN")}`,
+                  "Amount",
+                ]}
+              />
 
               <Line
                 type="monotone"
@@ -149,5 +151,28 @@ export default function Analytics() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/* ================= REUSABLE CARD ================= */
+
+function StatCard({
+  title,
+  value,
+  color = "",
+}: {
+  title: string;
+  value: string | number;
+  color?: string;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className={`text-3xl font-bold ${color}`}>{value}</p>
+      </CardContent>
+    </Card>
   );
 }
