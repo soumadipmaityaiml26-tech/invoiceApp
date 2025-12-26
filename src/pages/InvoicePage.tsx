@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import type { INVOICE } from "@/types/invoiceType";
 import { companyLogos } from "@/assets/companyLogos";
+import type { IPayment } from "@/types/paymentType";
+import { getLatestPaymentByInvoiceId } from "@/api/payments";
 /* ===============================
    Utils
 ================================ */
@@ -11,15 +13,8 @@ const formatCurrency = (amount: number): string =>
     maximumFractionDigits: 2,
   })}`;
 
-const formatDate = (date: string): string =>
-  new Date(date).toLocaleDateString("en-IN");
-
-const formatTime = (date: string): string =>
-  new Date(date).toLocaleTimeString("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+const formatDate = (iso: string) => iso.split("T")[0];
+const formatTime = (iso: string) => iso.split("T")[1].slice(0, 5);
 
 /* ===============================
    Props
@@ -53,31 +48,25 @@ const InvoicePage: React.FC<InvoiceProps> = ({ invoice }) => {
   /* ===============================
      ACTION HANDLERS
   ================================ */
+  const [latestPayment, setLatestPayment] = useState<IPayment | null>(null);
+
+  useEffect(() => {
+    if (!_id) return;
+
+    getLatestPaymentByInvoiceId(_id)
+      .then((res) => {
+        if (res.success) {
+          setLatestPayment(res.data);
+        }
+      })
+      .catch(() => {
+        setLatestPayment(null);
+      });
+  }, [_id]);
 
   const handlePrint = () => {
     window.print();
   };
-
-  // const handleWhatsApp = async (invoice: INVOICE) => {
-  //   try {
-  //     // 1️⃣ Generate PDF from backend
-  //     const pdfBlob = await generateInvoicePDF(invoice);
-
-  //     // 2️⃣ Download PDF locally
-  //     downloadBlob(pdfBlob, `Invoice_${invoice._id}.pdf`);
-
-  //     // 3️⃣ Open WhatsApp with message
-  //     window.open(
-  //       `https://wa.me/?text=${encodeURIComponent(
-  //         "📄 Please find the invoice attached."
-  //       )}`,
-  //       "_blank"
-  //     );
-  //   } catch (error) {
-  //     console.error("Invoice PDF generation failed", error);
-  //     alert("Failed to generate invoice PDF");
-  //   }
-  // };
 
   return (
     <>
@@ -148,9 +137,9 @@ const InvoicePage: React.FC<InvoiceProps> = ({ invoice }) => {
           <div style={styles.box}>
             <strong>BILL TO:</strong>
             <br />
-            {customer.name}
+            Name: {customer.name}
             <br />
-            {customer.address}
+            Address: {customer.address}
             <br />
             Phone: {customer.phone}
             {customer.PAN && <> | PAN: {customer.PAN}</>}
@@ -194,31 +183,44 @@ const InvoicePage: React.FC<InvoiceProps> = ({ invoice }) => {
             </tbody>
           </table>
 
-          {/* SUMMARY */}
-          <div style={styles.summary}>
-            <Row label="Items Total" value={itemsTotal} />
-            {charges.parking > 0 && (
-              <Row label="Parking" value={charges.parking} />
-            )}
-            {charges.amenities > 0 && (
-              <Row label="Amenities" value={charges.amenities} />
-            )}
-            {charges.otherCharges > 0 && (
-              <Row label="Other" value={charges.otherCharges} />
-            )}
-            <Row label="Sub Total" value={subTotal} />
-            <Row label={`GST ${gst.percentage}%`} value={gst.amount} />
-
-            <div style={styles.total}>
-              <span>GRAND TOTAL</span>
-              <span>{formatCurrency(totalAmount)}</span>
+          {/* SUMMARY + LATEST PAYMENT */}
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div style={styles.lpayment}>
+              <strong>Latest Advance</strong>
+              <br />
+              <span
+                style={{ color: "#2e7d32", fontWeight: "bold", fontSize: 13 }}
+              >
+                {formatCurrency(latestPayment?.amount || 0)}
+              </span>
             </div>
+            <div style={styles.summary}>
+              <Row label="Items Total" value={itemsTotal} />
+              {charges.parking > 0 && (
+                <Row label="Parking" value={charges.parking} />
+              )}
+              {charges.amenities > 0 && (
+                <Row label="Amenities" value={charges.amenities} />
+              )}
+              {charges.otherCharges > 0 && (
+                <Row label="Other" value={charges.otherCharges} />
+              )}
+              <Row label="Sub Total" value={subTotal} />
+              <Row label={`GST ${gst.percentage}%`} value={gst.amount} />
 
-            {advance > 0 && <Row label="Advance Amount" value={advance} />}
+              <div style={styles.total}>
+                <span>GRAND TOTAL</span>
+                <span>{formatCurrency(totalAmount)}</span>
+              </div>
 
-            <div style={styles.boldRow}>
-              <span>TOTAL DUE AMOUNT</span>
-              <span>{formatCurrency(remainingAmount)}</span>
+              {advance > 0 && <Row label="Advance Amount" value={advance} />}
+
+              <div style={styles.boldRow}>
+                <span>TOTAL DUE AMOUNT</span>
+                <span style={{ color: "#d32f2f", fontWeight: "bold" }}>
+                  {formatCurrency(remainingAmount)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -229,20 +231,6 @@ const InvoicePage: React.FC<InvoiceProps> = ({ invoice }) => {
 
           {/* FOOTER */}
           <div style={styles.footer}>
-            <div>
-              <strong>Bank Details:</strong>
-              <br />
-              Bank: Induslnd Bank
-              <br />
-              Branch: Gariahat
-              <br />
-              A/C: 259831918066
-              <br />
-              IFSC: INDB0000029
-              <br />
-              Account Type: Current
-            </div>
-
             <div>
               <strong>Terms & Condition</strong>
               <ul style={styles.terms}>
@@ -314,10 +302,10 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   row: { display: "flex", justifyContent: "space-between" },
-  company: { display: "flex", gap: 12 },
+  company: { display: "flex", gap: 12, fontSize: 13 },
   logo: { width: 60 },
 
-  invoiceTitle: { textAlign: "right", fontSize: 11.5 },
+  invoiceTitle: { textAlign: "right", fontSize: 13 },
   heading: { margin: 0, fontSize: 15 },
 
   box: { padding: 8, marginTop: 10, fontSize: 11.5 },
@@ -346,7 +334,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: "40%",
     marginLeft: "auto",
     marginTop: 8,
-    fontSize: 11.5,
+    fontSize: 13,
+  },
+  lpayment: {
+    width: "40%",
+    paddingTop: 20,
+    marginRight: "auto",
+    fontSize: 13,
   },
 
   rowItem: {
