@@ -18,3 +18,7 @@ export interface IPayment {
 export interface IGetPaymentResponse {
   payments: IPayment[];
 }
+export interface IGetLatestPayment {
+  success: boolean;
+  data: IPayment;
+}
