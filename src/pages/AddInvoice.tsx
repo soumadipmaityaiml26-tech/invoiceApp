@@ -109,9 +109,11 @@ export default function AddInvoice() {
 
   const extraCharges = parking + amenities + otherCharges;
   const subTotal = itemsTotal + extraCharges;
-  const gstAmount = (subTotal * gstPercent) / 100;
-  const totalAmount = subTotal + gstAmount;
-  const remainingAmount = Math.ceil(Math.max(totalAmount - advance, 0));
+  const gstAmount = (advance * gstPercent) / 100;
+  const totalAmount = subTotal;
+  const remainingAmount = Math.ceil(
+    Math.max(totalAmount - advance + gstAmount, 0)
+  );
 
   /* ================= HANDLERS ================= */
 
