@@ -70,6 +70,15 @@ export default function MobileSidebar() {
               Payments
             </Button>
           )}
+          {role === "user" && (
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-gray-300"
+              onClick={() => handleSelect("userinvoice")}
+            >
+              User Invoice
+            </Button>
+          )}
         </div>
       </SheetContent>
     </Sheet>

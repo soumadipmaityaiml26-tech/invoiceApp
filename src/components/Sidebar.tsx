@@ -52,6 +52,15 @@ export default function Sidebar() {
           Payments
         </Button>
       )}
+      {role === "user" && (
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-gray-300"
+          onClick={() => setPage("userinvoice")}
+        >
+          User Invoice
+        </Button>
+      )}
     </div>
   );
 }

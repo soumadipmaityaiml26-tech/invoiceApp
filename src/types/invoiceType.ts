@@ -111,6 +111,7 @@ export interface INVOICE {
   advance: number;
   remainingAmount: number;
   createdAt: string;
+  executiveName: string;
 }
 
 export interface ICreateInvoiceResponse {

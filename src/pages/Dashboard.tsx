@@ -2,9 +2,11 @@
 import { useGlobal } from "@/context/GlobalContext";
 import Analytics from "./Analytics";
 import Invoices from "./Invoice";
+
 import Manage from "./Manage";
 import AddInvoice from "./AddInvoice";
 import Payments from "./Payments";
+import UserInvoice from "./userInvoice";
 
 export default function Dashboard() {
   const { page } = useGlobal();
@@ -15,6 +17,7 @@ export default function Dashboard() {
       {page === "invoices" && role === "admin" && <Invoices />}
       {page === "manage" && role === "admin" && <Manage />}
       {page === "payments" && role === "admin" && <Payments />}
+      {page === "userinvoice" && role === "user" && <UserInvoice />}
       {page === "addinvoices" && <AddInvoice />}
     </div>
   );
