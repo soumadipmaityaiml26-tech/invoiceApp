@@ -34,6 +34,29 @@ export const getAllInvoices = async () => {
   return res.data;
 };
 
+export const getHistory = async (id: string) => {
+  const token = localStorage.getItem("authToken");
+
+  const res = await api.get<IGetAllInvoiceResponse>(`/invoices/history/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return res.data;
+};
+export const getAllUserInvoices = async () => {
+  const token = localStorage.getItem("authToken");
+
+  const res = await api.get<IGetAllInvoiceResponse>("/invoices/user", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return res.data;
+};
+
 export const updateInvoice = async (
   id: string,
   payload: {

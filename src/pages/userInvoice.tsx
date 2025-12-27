@@ -30,12 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import type { INVOICE, IGetAllInvoiceResponse } from "@/types/invoiceType";
-import {
-  getAllInvoices,
-  updateInvoice,
-  deleteInvoice,
-  getHistory,
-} from "@/api/invoice";
+import { getAllUserInvoices, getHistory, updateInvoice } from "@/api/invoice";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -44,15 +39,11 @@ const getDate = (iso: string) => iso.split("T")[0];
 const getTime = (iso: string) => iso.split("T")[1].slice(0, 5);
 
 /* ================= COMPONENT ================= */
-export default function Invoices() {
+export default function userInvoice() {
   const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
   const [invoices, setInvoices] = useState<INVOICE[]>([]);
-
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [historyInvoices, setHistoryInvoices] = useState<INVOICE[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
 
   /* ===== Edit Payment ===== */
   const [open, setOpen] = useState(false);
@@ -65,19 +56,20 @@ export default function Invoices() {
   const [bankName, setBankName] = useState("");
   const [loading, setLoading] = useState(false);
 
-  /* ===== Delete ===== */
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyInvoices, setHistoryInvoices] = useState<INVOICE[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   /* ================= FETCH ================= */
   const fetchInvoices = async () => {
-    const data: IGetAllInvoiceResponse = await getAllInvoices();
+    const data: IGetAllInvoiceResponse = await getAllUserInvoices();
     setInvoices(data.invoices);
   };
   const fetchHistory = async (id: string) => {
     const data: IGetAllInvoiceResponse = await getHistory(id);
     setHistoryInvoices(data.invoices);
   };
+
   useEffect(() => {
     fetchInvoices();
   }, []);
@@ -91,8 +83,7 @@ export default function Invoices() {
       inv._id.toLowerCase().includes(search.toLowerCase()) ||
       inv.customer.name.toLowerCase().includes(search.toLowerCase()) ||
       inv.customer.phone.includes(search) ||
-      inv.company.name.toLowerCase().includes(search.toLowerCase()) ||
-      inv.executiveName.toLowerCase().includes(search.toLowerCase())
+      inv.company.name.toLowerCase().includes(search.toLowerCase())
   );
 
   /* ================= HANDLERS ================= */
@@ -118,7 +109,6 @@ export default function Invoices() {
       setHistoryLoading(false);
     }
   };
-
   const handleUpdate = async () => {
     if (!selectedInvoice || payment === null) return;
 
@@ -144,23 +134,6 @@ export default function Invoices() {
       toast.error(err?.message || "Payment update failed");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!invoiceToDelete) return;
-
-    try {
-      await deleteInvoice(invoiceToDelete);
-      toast.success("Invoice deleted successfully");
-
-      setInvoices((prev) => prev.filter((inv) => inv._id !== invoiceToDelete));
-      await fetchInvoices();
-    } catch (err: any) {
-      toast.error(err?.message || "Delete failed");
-    } finally {
-      setDeleteOpen(false);
-      setInvoiceToDelete(null);
     }
   };
 
@@ -201,7 +174,6 @@ export default function Invoices() {
               <TableHead>Total</TableHead>
               <TableHead>Advance</TableHead>
               <TableHead>Remaining</TableHead>
-              <TableHead>Agent</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Time</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -219,7 +191,6 @@ export default function Invoices() {
                 <TableCell className="text-red-600 font-semibold">
                   ₹{inv.remainingAmount}
                 </TableCell>
-                <TableCell>{inv.executiveName}</TableCell>
                 <TableCell>{getDate(inv.createdAt)}</TableCell>
                 <TableCell>{getTime(inv.createdAt)}</TableCell>
                 <TableCell className="flex justify-end gap-2">
@@ -230,7 +201,6 @@ export default function Invoices() {
                   >
                     History
                   </Button>
-
                   <Button
                     size="sm"
                     variant="outline"
@@ -245,17 +215,6 @@ export default function Invoices() {
 
                   <Button size="sm" onClick={() => handleEditClick(inv)}>
                     <Pencil className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => {
-                      setInvoiceToDelete(inv._id);
-                      setDeleteOpen(true);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </TableCell>
               </TableRow>
@@ -288,8 +247,6 @@ export default function Invoices() {
 
                 <p className="text-muted-foreground">Advance</p>
                 <p>₹{inv.advance}</p>
-                <p className="text-muted-foreground">Agent</p>
-                <p>{inv.executiveName}</p>
 
                 <p className="text-muted-foreground">Date</p>
                 <p>
@@ -306,7 +263,6 @@ export default function Invoices() {
                 >
                   History
                 </Button>
-
                 <Button
                   variant="outline"
                   size="sm"
@@ -327,46 +283,11 @@ export default function Invoices() {
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
-
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="flex-1 flex items-center gap-2"
-                  onClick={() => {
-                    setInvoiceToDelete(inv._id);
-                    setDeleteOpen(true);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
-
-      {/* ================= DELETE CONFIRMATION ================= */}
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Invoice?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. The invoice and all related payments
-              will be permanently deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              onClick={handleDeleteConfirm}
-            >
-              Continue
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* ================= EDIT PAYMENT MODAL ================= */}
       <Dialog open={open} onOpenChange={setOpen}>

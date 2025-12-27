@@ -6,7 +6,7 @@ export interface CreateInvoicePayload {
   company:
     | "Airde Real Estate"
     | "Airde Developers"
-    | "Sora Realtors"
+    | "Sora Realtor"
     | "Unique Realcon";
 
   customer: {
@@ -111,6 +111,7 @@ export interface INVOICE {
   advance: number;
   remainingAmount: number;
   createdAt: string;
+  executiveName: string;
 }
 
 export interface ICreateInvoiceResponse {

@@ -63,10 +63,7 @@ export default function AddInvoice() {
 
   // Company
   const [company, setCompany] = useState<
-    | "Airde Real Estate"
-    | "Airde Developers"
-    | "Sora Realtors"
-    | "Unique Realcon"
+    "Airde Real Estate" | "Airde Developers" | "Sora Realtor" | "Unique Realcon"
   >("Unique Realcon");
 
   // Customer
@@ -112,9 +109,11 @@ export default function AddInvoice() {
 
   const extraCharges = parking + amenities + otherCharges;
   const subTotal = itemsTotal + extraCharges;
-  const gstAmount = (subTotal * gstPercent) / 100;
-  const totalAmount = subTotal + gstAmount;
-  const remainingAmount = Math.ceil(Math.max(totalAmount - advance, 0));
+  const gstAmount = (advance * gstPercent) / 100;
+  const totalAmount = subTotal;
+  const remainingAmount = Math.ceil(
+    Math.max(totalAmount - advance + gstAmount, 0)
+  );
 
   /* ================= HANDLERS ================= */
 
@@ -310,7 +309,7 @@ export default function AddInvoice() {
                 <SelectItem value="Airde Developers">
                   Airde Developers
                 </SelectItem>
-                <SelectItem value="Sora Realtors">Sora Realtors</SelectItem>
+                <SelectItem value="Sora Realtor">Sora Realtor</SelectItem>
                 <SelectItem value="Unique Realcon">Unique Realcon</SelectItem>
               </SelectContent>
             </Select>
