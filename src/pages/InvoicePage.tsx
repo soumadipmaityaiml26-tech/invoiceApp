@@ -259,7 +259,7 @@ const InvoicePage: React.FC<InvoiceProps> = ({ invoice }) => {
           {/* SUMMARY + LATEST PAYMENT */}
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div style={styles.lpayment}>
-              <strong>Latest Advance</strong>
+              {/* <strong>Latest Advance</strong>
               <br />
               <span
                 style={{ color: "#2e7d32", fontWeight: "bold", fontSize: 13 }}
@@ -267,7 +267,7 @@ const InvoicePage: React.FC<InvoiceProps> = ({ invoice }) => {
                 {formatCurrency(latestPayment?.amount || 0)}
               </span>
               <br />
-              (Payment received Thank you)
+              (Payment received Thank you) */}
             </div>
             <div style={styles.summary}>
               <Row label="Items Total" value={itemsTotal} />
@@ -300,6 +300,17 @@ const InvoicePage: React.FC<InvoiceProps> = ({ invoice }) => {
                 Total Due Amount in Words:{" "}
                 <strong>{numberToWords(remainingAmount)} only</strong>
               </div>
+              <div style={{ ...styles.boldRow, marginTop: 12 }}>
+                <span>Latest Advance</span>
+                <span style={{ color: "#2e7d32", fontWeight: "bold" }}>
+                  {formatCurrency(latestPayment?.amount || 0)}
+                </span>
+              </div>
+              {remainingAmount <= 0 && (
+                <div style={{ marginTop: 2 }}>
+                  <Row2 label="" value={"(No outstanding dues)"} />
+                </div>
+              )}
             </div>
           </div>
 
@@ -377,10 +388,20 @@ interface RowProps {
   value: number;
 }
 
+interface Row2Props {
+  label: string;
+  value: string;
+}
 const Row: React.FC<RowProps> = ({ label, value }) => (
   <div style={styles.rowItem}>
     <span>{label}</span>
     <span>{formatCurrency(value)}</span>
+  </div>
+);
+const Row2: React.FC<Row2Props> = ({ label = "", value }) => (
+  <div style={styles.rowItem}>
+    <span>{label}</span>
+    <span>{value}</span>
   </div>
 );
 
