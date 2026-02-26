@@ -10,7 +10,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Download, Pencil, Search, Trash2 } from "lucide-react";
+import {
+  Download,
+  Pencil,
+  Search,
+  Trash2,
+  History,
+  MoreVertical,
+  Copy,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +48,15 @@ import {
 } from "@/api/invoice";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 /* ================= UTILS ================= */
 const getDate = (iso: string) => iso.split("T")[0];
@@ -103,10 +120,19 @@ export default function Invoices() {
       inv.customer.name.toLowerCase().includes(search.toLowerCase()) ||
       inv.customer.phone.includes(search) ||
       inv.company.name.toLowerCase().includes(search.toLowerCase()) ||
-      inv.executiveName.toLowerCase().includes(search.toLowerCase())
+      inv.executiveName.toLowerCase().includes(search.toLowerCase()),
   );
 
   /* ================= HANDLERS ================= */
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Invoice ID copied");
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
 
   const handleEditClick = (invoice: INVOICE) => {
     setSelectedInvoice(invoice);
@@ -198,7 +224,10 @@ export default function Invoices() {
       setOpen(false);
       fetchInvoices();
     } catch (err: any) {
-      toast.error(err?.message || "Payment update failed");
+      const message =
+        err?.response?.data?.message || err?.message || "Payment update failed";
+
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -220,6 +249,52 @@ export default function Invoices() {
       setInvoiceToDelete(null);
     }
   };
+
+  const ActionMenu = ({ inv }: { inv: INVOICE }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+          <MoreVertical className="h-4 w-4" />
+          <span className="sr-only">Open menu</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-[160px]">
+        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+
+        <DropdownMenuItem onClick={() => handleEditClick(inv)}>
+          <Pencil className="mr-2 h-4 w-4" />
+          Edit / KYC
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          onClick={() =>
+            navigate(`/invoice/${inv._id}`, { state: { invoice: inv } })
+          }
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Download
+        </DropdownMenuItem>
+
+        <DropdownMenuItem onClick={() => handleHistoryClick(inv)}>
+          <History className="mr-2 h-4 w-4" />
+          History
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive focus:bg-destructive/10"
+          onClick={() => {
+            setInvoiceToDelete(inv._id);
+            setDeleteOpen(true);
+          }}
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   /* ================= UI ================= */
   return (
@@ -268,7 +343,21 @@ export default function Invoices() {
           <TableBody>
             {filteredInvoices.map((inv) => (
               <TableRow key={inv._id}>
-                <TableCell>{inv._id}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm">{inv._id}</span>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => copyToClipboard(inv._id)}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </TableCell>
+
                 <TableCell>{inv.customer.name}</TableCell>
                 <TableCell>{inv.customer.phone}</TableCell>
                 <TableCell>₹{inv.totalAmount}</TableCell>
@@ -280,7 +369,7 @@ export default function Invoices() {
                 <TableCell>{getDate(inv.createdAt)}</TableCell>
                 <TableCell>{getTime(inv.createdAt)}</TableCell>
                 <TableCell className="flex justify-end gap-2">
-                  <Button
+                  {/* <Button
                     size="sm"
                     variant="outline"
                     onClick={() => handleHistoryClick(inv)}
@@ -313,7 +402,19 @@ export default function Invoices() {
                     }}
                   >
                     <Trash2 className="h-4 w-4" />
+                  </Button> */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      navigate(`/invoice/${inv._id}`, {
+                        state: { invoice: inv },
+                      })
+                    }
+                  >
+                    <Download className="h-4 w-4" />
                   </Button>
+                  <ActionMenu inv={inv} />
                 </TableCell>
               </TableRow>
             ))}
@@ -324,78 +425,75 @@ export default function Invoices() {
       {/* ================= MOBILE VIEW ================= */}
       <div className="space-y-4 md:hidden">
         {filteredInvoices.map((inv) => (
-          <Card key={inv._id}>
-            <CardContent className="p-5 space-y-4">
-              <div className="flex justify-between">
-                <div>
-                  <p className="font-semibold">{inv.customer.name}</p>
-                  <p className="text-xs text-muted-foreground">{inv._id}</p>
+          <Card
+            key={inv._id}
+            className="overflow-hidden border-l-4 border-l-primary"
+          >
+            <CardContent className="p-0">
+              {/* Card Header: ID & Actions */}
+              <div className="flex items-center justify-between bg-muted/30 px-4 py-2 border-b">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-medium text-muted-foreground">
+                    {inv._id}
+                  </span>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={() => copyToClipboard(inv._id)}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
                 </div>
-                <span className="font-semibold text-red-600">
-                  ₹{inv.remainingAmount}
-                </span>
+
+                <ActionMenu inv={inv} />
               </div>
 
-              <div className="grid grid-cols-2 gap-y-2 text-sm">
-                <p className="text-muted-foreground">Phone</p>
-                <p>{inv.customer.phone}</p>
+              {/* Card Body: Customer Info */}
+              <div className="p-4 space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-lg leading-tight">
+                      {inv.customer.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {inv.customer.phone}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                      Remaining
+                    </p>
+                    <p className="font-bold text-red-600 text-lg">
+                      ₹{inv.remainingAmount}
+                    </p>
+                  </div>
+                </div>
 
-                <p className="text-muted-foreground">Total</p>
-                <p>₹{inv.totalAmount}</p>
-
-                <p className="text-muted-foreground">Advance</p>
-                <p>₹{inv.advance}</p>
-                <p className="text-muted-foreground">Agent</p>
-                <p>{inv.executiveName}</p>
-
-                <p className="text-muted-foreground">Date</p>
-                <p>
-                  {getDate(inv.createdAt)} {getTime(inv.createdAt)}
-                </p>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => handleHistoryClick(inv)}
-                >
-                  History
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 flex items-center gap-2"
-                  onClick={() =>
-                    navigate(`/invoice/${inv._id}`, {
-                      state: { invoice: inv },
-                    })
-                  }
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-
-                <Button
-                  size="sm"
-                  className="flex-1 flex items-center gap-2"
-                  onClick={() => handleEditClick(inv)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="flex-1 flex items-center gap-2"
-                  onClick={() => {
-                    setInvoiceToDelete(inv._id);
-                    setDeleteOpen(true);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {/* Grid for extra details */}
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t text-sm">
+                  <div>
+                    <p className="text-muted-foreground text-xs">
+                      Total Amount
+                    </p>
+                    <p className="font-medium">₹{inv.totalAmount}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">
+                      Advance Paid
+                    </p>
+                    <p className="font-medium text-green-600">₹{inv.advance}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Agent</p>
+                    <p className="font-medium">{inv.executiveName}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Date</p>
+                    <p className="font-medium">{getDate(inv.createdAt)}</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -469,7 +567,7 @@ export default function Invoices() {
                   value={payment ?? ""}
                   onChange={(e) =>
                     setPayment(
-                      e.target.value === "" ? null : Number(e.target.value)
+                      e.target.value === "" ? null : Number(e.target.value),
                     )
                   }
                 />
